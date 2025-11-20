@@ -82,7 +82,7 @@
                         x-transition:leave-start="opacity-100 transform translate-y-0"
                         x-transition:leave-end="opacity-0 transform -translate-y-2"
                         class="ml-4 mt-2 space-y-1.5 border-l-2 border-primary/20 pl-4 py-2">
-                        <a href="{{ url('/manager/tasks/create') }}"
+                        <a href="{{ url('/tasks/create') }}"
                             class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-sidebar-foreground hover:bg-white/60 transition-all duration-200 group/item">
                             <div
                                 class="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center transition-all duration-200 group-hover/item:scale-110 group-hover/item:bg-green-500 group-hover/item:text-white">

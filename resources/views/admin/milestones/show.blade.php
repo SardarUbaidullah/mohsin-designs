@@ -196,19 +196,32 @@
                         </div>
 
                         <!-- Description -->
-                        @if($milestone->description)
-                        <div class="mt-8 pt-6 border-t border-gray-100">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                                <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                </svg>
-                                Description
-                            </h3>
-                            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <p class="text-sm text-gray-700 leading-relaxed">{{ $milestone->description }}</p>
-                            </div>
-                        </div>
-                        @endif
+    @if($milestone->description)
+<div class="mt-8 pt-6 border-t border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+        <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Description
+    </h3>
+    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 overflow-x-auto">
+        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-line break-words min-w-0">
+            {!! 
+                preg_replace_callback('/(https?:\/\/[^\s]+|www\.[^\s]+)/', 
+                function($matches) {
+                    $url = $matches[0];
+                    // Agar www se start ho raha hai toh http:// add karo
+                    if (strpos($url, 'www.') === 0) {
+                        $url = 'http://' . $url;
+                    }
+                    return '<a href="' . $url . '" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 break-all">' . $matches[0] . '</a>';
+                }, 
+                e($milestone->description)) 
+            !!}
+        </div>
+    </div>
+</div>
+@endif
                     </div>
                 </div>
 

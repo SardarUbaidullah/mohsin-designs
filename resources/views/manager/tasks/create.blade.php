@@ -60,22 +60,23 @@
                                 <label for="project_id" class="block text-sm font-medium text-gray-700 mb-2">Project</label>
                                 <div class="relative">
                                     <select name="project_id"
-                                            id="project_id"
-                                            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 appearance-none"
-                                            required>
-                                        <option value="">Choose a project...</option>
-                                        @foreach($projects as $project)
-                                            <option value="{{ $project->id }}"
-                                                    {{ (old('project_id') == $project->id || request('project_id') == $project->id) ? 'selected' : '' }}
-                                                    data-manager="{{ $project->manager_id }}"
-                                                    class="flex items-center">
-                                                {{ $project->name }}
-                                                @if($project->manager_id == auth()->id())
-                                                    <span class="ml-2 text-xs text-green-600">(Your Project)</span>
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
+        id="project_id"
+        class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 appearance-none"
+        required>
+    <option value="">Choose a project...</option>
+    @foreach($projects as $project)
+        <option value="{{ $project->id }}"
+                {{ (old('project_id') == $project->id || request('project_id') == $project->id) ? 'selected' : '' }}
+                data-manager="{{ $project->manager_id }}"
+                data-is-manager="{{ $project->manager_id == auth()->id() || auth()->user()->role == 'super_admin' ? 'true' : 'false' }}"
+                class="flex items-center">
+            {{ $project->name }}
+            @if($project->manager_id == auth()->id() || auth()->user()->role == 'super_admin')
+                <span class="ml-2 text-xs text-green-600">(Your Project)</span>
+            @endif
+        </option>
+    @endforeach
+</select>
                                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>

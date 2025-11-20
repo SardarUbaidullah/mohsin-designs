@@ -129,12 +129,27 @@
                     </div>
                 </div>
 
-                @if($project->description)
-                <div class="mt-6">
-                    <h3 class="text-sm font-medium text-gray-500 mb-2">Description</h3>
-                    <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-4">{{ $project->description }}</p>
-                </div>
-                @endif
+      @if($project->description)
+<div class="mt-6">
+    <h3 class="text-sm font-medium text-gray-500 mb-2">Description</h3>
+    <div class="text-sm text-gray-700 bg-gray-50 rounded-lg p-4 overflow-x-auto">
+        <div class="whitespace-pre-line break-words min-w-0">
+            {!! 
+                preg_replace_callback('/(https?:\/\/[^\s]+|www\.[^\s]+)/', 
+                function($matches) {
+                    $url = $matches[0];
+                    // Agar www se start ho raha hai toh http:// add karo
+                    if (strpos($url, 'www.') === 0) {
+                        $url = 'http://' . $url;
+                    }
+                    return '<a href="' . $url . '" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 break-all">' . $matches[0] . '</a>';
+                }, 
+                e($project->description)) 
+            !!}
+        </div>
+    </div>
+</div>
+@endif
             </div>
 
             <!-- Milestones Section -->

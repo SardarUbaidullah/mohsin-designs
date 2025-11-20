@@ -159,12 +159,16 @@
                         @endif
                     </dl>
 
-                    @if($file->description)
-                    <div class="mt-6">
-                        <dt class="text-sm font-medium text-gray-500">Description</dt>
-                        <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-4 rounded-lg">{{ $file->description }}</dd>
-                    </div>
-                    @endif
+                @if($file->description)
+<div class="mt-6">
+    <dt class="text-sm font-medium text-gray-500">Description</dt>
+    <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-4 rounded-lg overflow-x-auto">
+        <div class="whitespace-pre-line break-words min-w-0">
+            {!! preg_replace('/(https?:\/\/[^\s]+)/', '<a href="$1" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 break-all">$1</a>', e($file->description)) !!}
+        </div>
+    </dd>
+</div>
+@endif
                 </div>
             </div>
         </div>

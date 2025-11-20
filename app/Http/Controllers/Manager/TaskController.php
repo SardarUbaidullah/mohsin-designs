@@ -95,8 +95,15 @@ class TaskController extends Controller
 
     public function create(Request $request)
     {
-        $projects = Projects::where('manager_id', auth()->id())->get();
-        $users = User::where('role' ,'!=', 'clien   t')->get();
+        // For Super Admin - get all projects
+// For Admin/User - get only their managed projects
+
+if (auth()->user()->role == 'super_admin') {
+    $projects = Projects::all();
+} else {
+    $projects = Projects::where('manager_id', auth()->id())->get();
+}
+        $users = User::where('role' ,'!=', 'client')->get();
 
         $selectedProject = $request->get('project_id');
 
