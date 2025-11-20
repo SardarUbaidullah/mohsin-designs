@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Login - ProjectFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <!-- Heroicons for eye icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#FCF8F3',
+                        foreground: 'oklch(0.145 0 0)',
+                        primary: '#19874D',
+                        secondary: '#AE9B85',
+                        muted: '#D9D9D9',
+                        'muted-foreground': '#000000',
+                        accent: '#F59522',
+                        border: 'oklch(0.922 0 0)',
+                    },
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                    },
+                    screens: {
+                        'xsm': '550px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 1;
+            }
+        }
+        @keyframes glow {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.85;
+                transform: scale(1.05);
+            }
+        }
+        @keyframes button-glow {
+            0%, 100% {
+                opacity: 0.8;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
+        @keyframes gradient-text {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        @keyframes form-appear {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .animate-float {
+            animation: float 12s ease-in-out infinite;
+        }
+        .animate-glow {
+            animation: glow 5s ease-in-out infinite;
+        }
+        .animate-button-glow {
+            animation: button-glow 3s ease-in-out infinite;
+        }
+        .animate-gradient-text {
+            background-size: 200% 200%;
+            animation: gradient-text 5s ease infinite;
+        }
+        .animate-form-appear {
+            animation: form-appear 0.6s ease-out forwards;
+        }
+
+        * {
+            border-color: var(--border, oklch(0.922 0 0));
+        }
+
+        body {
+            background-color: #FCF8F3;
+            color: oklch(0.145 0 0);
+            font-family: "Poppins", sans-serif;
+        }
+
+         .password-toggle {
+            transition: all 0.2s ease;
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .password-toggle:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        /* Ensure consistent input padding with icon */
+        .password-input {
+            padding-right: 48px !important;
+        }
+    </style>
+</head>
+<body class="font-poppins">
+    <div class="min-h-screen flex py-2 justify-center items-center w-full overflow-x-hidden bg-gradient-to-br from-background via-background to-background/95 relative">
+        <!-- Static background glow -->
+        <div
+            class="absolute inset-0 opacity-40 pointer-events-none"
+            style="background: radial-gradient(circle at 50% 50%, rgba(59,130,246,0.25) 0%, transparent 60%)"
+        ></div>
+
+        <!-- Optimized floating particles -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none" id="particles-container">
+            <!-- Particles will be generated by JavaScript -->
+        </div>
+
+        <!-- Background glows -->
+        <div class="absolute top-20 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-glow pointer-events-none"></div>
+
+        <div
+            class="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-accent/10 rounded-full blur-3xl animate-glow pointer-events-none"
+            style="animation-delay: 1.5s"
+        ></div>
+
+        <!-- Main Content Container -->
+        <div class="relative z-10 h-full flex flex-col">
+
+            <!-- Hero Section -->
+            <div class="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 px-6 sm:px-8 py-8">
+                <!-- Left Content - Hidden on small screens, visible on medium and up -->
+                <div class="flex-1 max-w-2xl text-center lg:text-left relative hidden md:block">
+                    <div class="absolute -top-20 -left-32 w-96 h-96 bg-primary/5 blur-3xl rounded-full pointer-events-none"></div>
+
+                    <!-- Hero Text -->
+                    <div class="transition-all duration-700 ease-out translate-y-0 opacity-100">
+                        <p class="uppercase tracking-[4px] text-primary/80 font-semibold mb-4 text-sm">
+                            Empower your workflow
+                        </p>
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-foreground">
+                            The future of
+                            <span class="block relative mt-2">
+                                <span class="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient-text">
+                                    project management
+                                </span>
+                                <span class="absolute inset-x-0 -bottom-2 h-[4px] bg-gradient-to-r from-primary/50 via-accent/50 to-transparent rounded-full blur-sm"></span>
+                            </span>
+                        </h1>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mt-6 transition-all duration-700 delay-150 ease-out translate-y-0 opacity-100">
+                        <p class="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                            Simplify your team's workflow with tools that bring clarity, automation, and speed so you can focus on what truly matters.
+                        </p>
+                    </div>
+
+                    <!-- Features Grid -->
+                    <div class="mt-8 transition-all duration-700 delay-300 ease-out translate-y-0 opacity-100">
+                        <div class="grid grid-cols-1 xsm:grid-cols-2 lg:place-items-start place-items-center gap-4 mb-8">
+                            <div class="flex items-start space-x-3 group py-3 rounded-xl transition-all duration-300 w-full px-3 xsm:px-0 xsm:bg-transparent bg-background/75">
+                                <div class="flex-shrink-0 my-auto w-5 h-5 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-foreground text-sm">Unified Workspace</div>
+                                    <div class="text-xs text-start text-muted-foreground">All projects in one hub.</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3 group py-3 rounded-xl transition-all duration-300 w-full px-3 xsm:px-0 xsm:bg-transparent bg-background/75">
+                                <div class="flex-shrink-0 my-auto w-5 h-5 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-foreground text-sm">Real-time Collaboration</div>
+                                    <div class="text-xs text-start text-muted-foreground">Work together live.</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3 group py-3 rounded-xl transition-all duration-300 w-full px-3 xsm:px-0 xsm:bg-transparent bg-background/75">
+                                <div class="flex-shrink-0 my-auto w-5 h-5 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-foreground text-sm">Smart Automation</div>
+                                    <div class="text-xs text-start text-muted-foreground">Automate your flow.</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3 group py-3 rounded-xl transition-all duration-300 w-full px-3 xsm:px-0 xsm:bg-transparent bg-background/75">
+                                <div class="flex-shrink-0 my-auto w-5 h-5 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-foreground text-sm">Insightful Analytics</div>
+                                    <div class="text-xs text-start text-muted-foreground">Track what matters.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CTA Button -->
+                    <div class="transition-all duration-700 delay-450 ease-out translate-y-0 opacity-100 ">
+                        <button
+
+                            class="group relative inline-flex items-center justify-center px-12 py-4 text-base font-semibold text-white bg-gradient-to-r from-primary to-accent rounded-full overflow-hidden shadow-lg hover:shadow-primary/40 transition-all duration-500 hover:scale-105 active:scale-95 pointer-events-none"
+                        >
+                            <span class="relative z-10 flex items-center space-x-2">
+                                <span>Login To Launch Dashboard</span>
+
+                            </span>
+                            <div class="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-80 blur-2xl animate-button-glow"></div>
+                            <div class="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Login Form - Always visible on all screen sizes -->
+                <div class="w-full max-w-md lg:max-w-lg mx-auto">
+                    <div class="transition-all duration-700 delay-600 ease-out translate-y-0 opacity-100 scale-100">
+                        <div class="relative bg-white/80 backdrop-blur-xl border border-border/60 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 group animate-form-appear">
+
+                            <!-- Mobile-only header -->
+                            <div class="text-center mb-8 md:hidden">
+                                <h2 class="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                                    ProjectFlow
+                                </h2>
+                                <p class="text-muted-foreground mt-1 text-sm">Sign in to continue</p>
+                            </div>
+
+                            <!-- Form Header -->
+                            <div class="text-center mb-8 hidden md:block">
+                                <h2 class="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                                    Welcome Back
+                                </h2>
+                                <p class="text-muted-foreground mt-2">Sign in to your account</p>
+                            </div>
+
+                            <!-- Display Success/Error Messages -->
+                            @if (session('status'))
+                                <div class="mb-4 text-sm font-medium text-green-600 bg-green-50 p-3 rounded-lg">
+                                    {{ session('status') }}
+                                </div>
+                            @endif
+
+                            @if ($errors->any())
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-lg">
+                                        <ul class="list-disc list-inside">
+                                            @foreach ($errors->all() as $error)
+                                                <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <!-- Login Form -->
+                            <form method="POST" action="{{ route('login') }}" class="space-y-6">
+                                @csrf
+
+                                <!-- Email Field -->
+                                <div class="space-y-3">
+                                    <label for="email" class="text-sm font-medium text-foreground">Email Address</label>
+                                    <div class="relative group">
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            name="email"
+                                            value="{{ old('email') }}"
+                                            required
+                                            autofocus
+                                            autocomplete="email"
+                                            class="w-full px-4 py-4 bg-background/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none placeholder:text-muted-foreground/60 group-hover:border-primary/40 text-base"
+                                            placeholder="Enter your email"
+                                        />
+                                        <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Password Field -->
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <label for="password" class="text-sm font-medium text-foreground">Password</label>
+                                        @if (Route::has('password.request'))
+                                            <a href="{{ route('password.request') }}" class="text-xs text-primary hover:text-accent transition-colors duration-300">Forgot password?</a>
+                                        @endif
+                                    </div>
+                                    <div class="relative group">
+                                        <input
+                                            id="password"
+                                            type="password"
+                                            name="password"
+                                            required
+                                            autocomplete="current-password"
+                                            class="w-full px-4 py-4 pr-12 bg-background/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none placeholder:text-muted-foreground/60 group-hover:border-primary/40 text-base"
+                                            placeholder="Enter your password"
+                                        />
+                                        <button
+                                            type="button"
+                                            id="password-toggle"
+                                            class="password-toggle absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground/60 hover:text-primary transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-md p-1"
+                                            aria-label="Show password"
+                                        >
+                                            <i class="fas fa-eye pointer-events-none" id="password-icon" ></i>
+                                        </button>
+                                        <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Remember Me -->
+                                <div class="flex items-center space-x-3 pt-2">
+                                    <input
+                                        id="remember_me"
+                                        type="checkbox"
+                                        name="remember"
+                                        class="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary/50 focus:ring-2"
+                                    />
+                                    <label for="remember_me" class="text-sm text-foreground">Remember me</label>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <button
+                                    type="submit"
+                                    class="w-full group relative inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-primary to-accent rounded-2xl overflow-hidden shadow-lg hover:shadow-primary/40 transition-all duration-500 hover:scale-[1.02] active:scale-95 cursor-pointer mt-6"
+                                >
+                                    <span class="relative z-10 flex items-center space-x-2">
+                                        <span>Sign In</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-in group-hover:translate-x-1 transition-transform duration-200">
+                                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                                            <polyline points="10 17 15 12 10 7"/>
+                                            <line x1="15" x2="3" y1="12" y2="12"/>
+                                        </svg>
+                                    </span>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-80 blur-xl animate-button-glow"></div>
+                                </button>
+                            </form>
+
+                            <!-- Register Link -->
+
+
+                            <!-- Glow corners -->
+                            <div class="absolute -top-2 -right-2 w-6 h-6 border-t-2 border-r-2 border-primary rounded-tr-3xl group-hover:w-8 group-hover:h-8 transition-all duration-300"></div>
+                            <div class="absolute -bottom-2 -left-2 w-6 h-6 border-b-2 border-l-2 border-accent rounded-bl-3xl group-hover:w-8 group-hover:h-8 transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate particles
+        function generateParticles() {
+            const container = document.getElementById('particles-container');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'absolute w-1 h-1 bg-primary/30 rounded-full animate-float';
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                particle.style.animationDelay = `${Math.random() * 6}s`;
+                particle.style.animationDuration = `${12 + Math.random() * 8}s`;
+                container.appendChild(particle);
+            }
+        }
+
+        // Password toggle functionality
+        function setupPasswordToggle() {
+            const passwordInput = document.getElementById('password');
+            const passwordToggle = document.getElementById('password-toggle');
+            const passwordIcon = document.getElementById('password-icon');
+
+            passwordToggle.addEventListener('click', function() {
+                // Toggle password visibility
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+
+                // Toggle icon
+                if (type === 'text') {
+                    passwordIcon.classList.remove('fa-eye');
+                    passwordIcon.classList.add('fa-eye-slash');
+                    passwordToggle.setAttribute('aria-label', 'Hide password');
+                } else {
+                    passwordIcon.classList.remove('fa-eye-slash');
+                    passwordIcon.classList.add('fa-eye');
+                    passwordToggle.setAttribute('aria-label', 'Show password');
+                }
+            });
+
+            // Add keyboard support (Enter or Space to toggle)
+            passwordToggle.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    passwordToggle.click();
+                }
+            });
+        }
+
+        // Handle get started button click
+        function handleGetStarted() {
+            // Redirect to dashboard (replace with your actual URL)
+            window.location.href = '{{route('dashboard')}}';
+        }
+
+        // Form validation and submission
+        document.addEventListener('DOMContentLoaded', function() {
+            generateParticles();
+            setupPasswordToggle();
+
+            // Remove the form submission prevention
+            // The form will now submit normally to Laravel's login route
+
+            // Add form validation if needed
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                // You can add client-side validation here if needed
+                // But don't prevent default submission for Laravel to handle
+
+                // Example: Show loading state
+                const submitButton = form.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="relative z-10">Signing In...</span>';
+            });
+        });
+    </script>
+</body>
+</html>
