@@ -20,7 +20,7 @@ class ProjectController extends Controller
     {
         $this->notificationService = $notificationService;
     }
-
+ 
     // GET /projects
  public function index(Request $request)
 {
