@@ -218,7 +218,7 @@ public function store(Request $request)
     public function edit($id)
     {
         $project = Projects::with(['teamMembers'])->findOrFail($id);
-        $managers = User::where('role', 'admin')->orWhere('role', 'manager')->get();
+$managers = User::where('role', '!=', 'client')->get();
         $clients = Client::active()->get();
     $categories = Category::all();
         $teamMembers = User::where('role', 'user')->get();

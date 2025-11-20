@@ -19,7 +19,7 @@ class task_subtasks extends Model
 
     public function task()
     {
-        return $this->belongsTo(tasks::class);
+        return $this->belongsTo(Tasks::class);
     }
 
     

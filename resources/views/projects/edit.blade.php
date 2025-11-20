@@ -45,37 +45,39 @@
                             </p>
                         @enderror
                     </div>
-<!-- Category Field -->
-<div>
-    <label for="category_id" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-    <select
-        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('category_id') border-red-500 @enderror"
-        id="category_id"
-        name="category_id"
-    >
-        <option value="">Select a Category</option>
-        @foreach($categories as $category)
-            <option value="{{ $category->id }}" {{ old('category_id', $project->category_id) == $category->id ? 'selected' : '' }} style="color: {{ $category->color }}">
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
-    @error('category_id')
-        <p class="mt-2 text-sm text-red-600 flex items-center">
-            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-            </svg>
-            {{ $message }}
-        </p>
-    @enderror
-</div>
+
+                    <!-- Category Field -->
+                    <div>
+                        <label for="category_id" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <select
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('category_id') border-red-500 @enderror"
+                            id="category_id"
+                            name="category_id"
+                        >
+                            <option value="">Select a Category</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ old('category_id', $project->category_id) == $category->id ? 'selected' : '' }} style="color: {{ $category->color }}">
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('category_id')
+                            <p class="mt-2 text-sm text-red-600 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </p>
+                        @enderror
+                    </div>
+
                     <div>
                         <label for="client_id" class="block text-sm font-medium text-gray-700 mb-2">Client *</label>
                         <select
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('client_id') border-red-500 @enderror"
                             id="client_id"
                             name="client_id"
-                            
+                            required
                         >
                             <option value="">Select a Client</option>
                             @foreach($clients as $client)
@@ -114,12 +116,11 @@
                     @enderror
                 </div>
 
-                <!-- Date Section with Validations -->
+                <!-- Date Section - Edit Mode (No Start Date Restrictions) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">
                             Start Date *
-                            <span class="text-xs text-gray-500 font-normal">(Cannot be in the past)</span>
                         </label>
                         <input
                             type="date"
@@ -128,7 +129,6 @@
                             name="start_date"
                             value="{{ old('start_date', $project->start_date ? \Carbon\Carbon::parse($project->start_date)->format('Y-m-d') : '') }}"
                             required
-                            min="{{ date('Y-m-d') }}"
                         >
                         @error('start_date')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
@@ -144,7 +144,7 @@
                     <div>
                         <label for="due_date" class="block text-sm font-medium text-gray-700 mb-2">
                             Due Date
-                            <span class="text-xs text-gray-500 font-normal">(Optional - must be after start date)</span>
+                            <span class="text-xs text-gray-500 font-normal">(Optional)</span>
                         </label>
                         <input
                             type="date"
@@ -152,7 +152,7 @@
                             id="due_date"
                             name="due_date"
                             value="{{ old('due_date', $project->due_date ? \Carbon\Carbon::parse($project->due_date)->format('Y-m-d') : '') }}"
-                            min="{{ date('Y-m-d') }}"
+                            placeholder="Leave empty if no due date"
                         >
                         @error('due_date')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
@@ -192,30 +192,15 @@
 
                 @if (Auth::user()->role == 'admin' || Auth::user()->role == 'super_admin')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    @if (Auth::user()->role == 'admin')
-                    <div>
-                        <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <select
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                            id="status"
-                            name="status"
-                        >
-                            <option value="pending" {{ old('status', $project->status) == 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="in_progress" {{ old('status', $project->status) == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                            <option value="completed" {{ old('status', $project->status) == 'completed' ? 'selected' : '' }}>Completed</option>
-                        </select>
-                    </div>
-                    @endif
-
                     @if (Auth::user()->role == 'super_admin')
                     <div>
-                        <label for="manager_id" class="block text-sm font-medium text-gray-700 mb-2">Manager</label>
+                        <label for="manager_id" class="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
                         <select
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                             id="manager_id"
                             name="manager_id"
                         >
-                            <option value="">Select Manager</option>
+                            <option value="">Assign to</option>
                             @foreach ($managers as $manager)
                                 <option value="{{ $manager->id }}" {{ old('manager_id', $project->manager_id) == $manager->id ? 'selected' : '' }}>
                                     {{ $manager->name }}
@@ -266,11 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dueDateInput = document.getElementById('due_date');
     const form = document.getElementById('projectForm');
 
-    // Set today's date as minimum for both fields
-    const today = new Date().toISOString().split('T')[0];
-    startDateInput.min = today;
-    dueDateInput.min = today;
-
     // Add event listeners for real-time validation
     startDateInput.addEventListener('input', validateDates);
     dueDateInput.addEventListener('input', validateDates);
@@ -316,8 +296,6 @@ function validateDates() {
 
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const dueDate = dueDateInput.value ? new Date(dueDateInput.value) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     let errors = [];
     let hasErrors = false;
@@ -330,16 +308,11 @@ function validateDates() {
     startDateValidation.className = 'mt-1 text-xs';
     dueDateValidation.className = 'mt-1 text-xs';
 
-    // Validate Start Date
+    // Validate Start Date (only required field validation for edit page)
     if (!startDateInput.value) {
         startDateInput.classList.add('border-red-500');
         startDateValidation.innerHTML = '<span class="text-red-600">Start date is required</span>';
         errors.push('Start date is required');
-        hasErrors = true;
-    } else if (startDate < today) {
-        startDateInput.classList.add('border-red-500');
-        startDateValidation.innerHTML = '<span class="text-red-600">Start date cannot be in the past</span>';
-        errors.push('Start date cannot be in the past');
         hasErrors = true;
     } else {
         startDateInput.classList.add('border-green-500');
@@ -348,12 +321,7 @@ function validateDates() {
 
     // Validate Due Date (only if provided)
     if (dueDateInput.value) {
-        if (dueDate < today) {
-            dueDateInput.classList.add('border-red-500');
-            dueDateValidation.innerHTML = '<span class="text-red-600">Due date cannot be in the past</span>';
-            errors.push('Due date cannot be in the past');
-            hasErrors = true;
-        } else if (startDateInput.value && dueDate <= startDate) {
+        if (startDateInput.value && dueDate <= startDate) {
             dueDateInput.classList.add('border-red-500');
             dueDateValidation.innerHTML = '<span class="text-red-600">Due date must be after start date</span>';
             errors.push('Due date must be after start date');
@@ -371,8 +339,8 @@ function validateDates() {
             }
         }
     } else {
-        // Due date is optional, so no validation needed when empty
-        dueDateValidation.innerHTML = '<span class="text-gray-500">Optional - no due date set</span>';
+        // Due date is empty - show empty state message
+        dueDateValidation.innerHTML = '<span class="text-gray-500">No due date set</span>';
     }
 
     // Show/hide validation summary

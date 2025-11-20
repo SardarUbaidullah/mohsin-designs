@@ -105,7 +105,7 @@
                                             (Due: {{ \Carbon\Carbon::parse($milestone->due_date)->format('M d, Y') }})
                                         @endif
                                         @if($milestone->status === 'completed')
-                                            ✅
+                                            ?
                                         @endif
                                     </option>
                                 @endforeach
@@ -150,7 +150,7 @@
                     >{{ old('description', $task->description) }}</textarea>
                 </div>
 
-                <!-- Date Section with Validations -->
+                <!-- Date Section - Edit Mode (No Date Restrictions) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
@@ -191,7 +191,6 @@
                             id="due_date"
                             name="due_date"
                             value="{{ old('due_date', $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : '') }}"
-                            min="{{ date('Y-m-d') }}"
                         >
                         @error('due_date')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
@@ -217,7 +216,6 @@
                             id="start_date"
                             name="start_date"
                             value="{{ old('start_date', $task->start_date ? \Carbon\Carbon::parse($task->start_date)->format('Y-m-d') : '') }}"
-                            min="{{ date('Y-m-d') }}"
                         >
                         @error('start_date')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
@@ -232,13 +230,13 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Date Validation
+                            Date Information
                         </label>
                         <div id="date_relationship_info" class="text-xs text-gray-500 p-3 bg-gray-50 rounded-lg">
-                            <p>• Start date cannot be in the past</p>
-                            <p>• Due date cannot be in the past</p>
-                            <p>• Due date must be after start date</p>
-                            <p>• Existing dates are preserved if valid</p>
+                            <p>� Start date and due date are optional</p>
+                            <p>� Due date should be after start date</p>
+                            <p>� Existing dates are preserved</p>
+                            <p>� Past dates are allowed for editing</p>
                         </div>
                     </div>
                 </div>
@@ -278,11 +276,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const startDateInput = document.getElementById('start_date');
     const dueDateInput = document.getElementById('due_date');
     const form = document.getElementById('taskForm');
-
-    // Set today's date as minimum for both fields
-    const today = new Date().toISOString().split('T')[0];
-    startDateInput.min = today;
-    dueDateInput.min = today;
 
     // Project change event for dynamic milestone loading
     projectSelect.addEventListener('change', function() {
@@ -343,14 +336,6 @@ document.addEventListener('DOMContentLoaded', function() {
     startDateInput.addEventListener('change', validateTaskDates);
     dueDateInput.addEventListener('change', validateTaskDates);
 
-    // Update due date min when start date changes
-    startDateInput.addEventListener('change', function() {
-        if (this.value) {
-            dueDateInput.min = this.value;
-            validateTaskDates();
-        }
-    });
-
     // Form submission validation
     form.addEventListener('submit', function(e) {
         if (!validateTaskDates()) {
@@ -382,8 +367,6 @@ function validateTaskDates() {
 
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const dueDate = dueDateInput.value ? new Date(dueDateInput.value) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     let errors = [];
     let hasErrors = false;
@@ -398,21 +381,14 @@ function validateTaskDates() {
 
     // Validate Start Date (if provided)
     if (startDateInput.value) {
-        if (startDate < today) {
-            startDateInput.classList.add('border-red-500');
-            startDateValidation.innerHTML = '<span class="text-red-600">Start date cannot be in the past</span>';
-            errors.push('Start date cannot be in the past');
-            hasErrors = true;
-        } else {
-            startDateInput.classList.add('border-green-500');
+        startDateInput.classList.add('border-green-500');
 
-            // Check if this is an existing date being preserved
-            const originalStartDate = '{{ $task->start_date ? \Carbon\Carbon::parse($task->start_date)->format("Y-m-d") : "" }}';
-            if (startDateInput.value === originalStartDate) {
-                startDateValidation.innerHTML = '<span class="text-green-600">✓ Existing start date (valid)</span>';
-            } else {
-                startDateValidation.innerHTML = '<span class="text-green-600">✓ Valid start date</span>';
-            }
+        // Check if this is an existing date being preserved
+        const originalStartDate = '{{ $task->start_date ? \Carbon\Carbon::parse($task->start_date)->format("Y-m-d") : "" }}';
+        if (startDateInput.value === originalStartDate) {
+            startDateValidation.innerHTML = '<span class="text-green-600">? Existing start date</span>';
+        } else {
+            startDateValidation.innerHTML = '<span class="text-green-600">? Start date set</span>';
         }
     } else {
         // Optional field - no validation needed if empty
@@ -421,12 +397,8 @@ function validateTaskDates() {
 
     // Validate Due Date (if provided)
     if (dueDateInput.value) {
-        if (dueDate < today) {
-            dueDateInput.classList.add('border-red-500');
-            dueDateValidation.innerHTML = '<span class="text-red-600">Due date cannot be in the past</span>';
-            errors.push('Due date cannot be in the past');
-            hasErrors = true;
-        } else if (startDateInput.value && dueDate <= startDate) {
+        // Check if due date is before start date
+        if (startDateInput.value && dueDate <= startDate) {
             dueDateInput.classList.add('border-red-500');
             dueDateValidation.innerHTML = '<span class="text-red-600">Due date must be after start date</span>';
             errors.push('Due date must be after start date');
@@ -444,9 +416,9 @@ function validateTaskDates() {
 
                 let durationText = '';
                 if (dueDateInput.value === originalDueDate) {
-                    durationText = '✓ Existing due date (valid)';
+                    durationText = '? Existing due date';
                 } else {
-                    durationText = '✓ Valid due date';
+                    durationText = '? Due date set';
                 }
 
                 if (daysDiff === 0) {
@@ -467,9 +439,9 @@ function validateTaskDates() {
                 }
             } else {
                 if (dueDateInput.value === originalDueDate) {
-                    dueDateValidation.innerHTML = '<span class="text-green-600">✓ Existing due date (valid)</span>';
+                    dueDateValidation.innerHTML = '<span class="text-green-600">? Existing due date</span>';
                 } else {
-                    dueDateValidation.innerHTML = '<span class="text-green-600">✓ Valid due date</span>';
+                    dueDateValidation.innerHTML = '<span class="text-green-600">? Due date set</span>';
                 }
             }
         }
@@ -482,11 +454,11 @@ function validateTaskDates() {
     if ((startDateInput.value && !dueDateInput.value) || (!startDateInput.value && dueDateInput.value)) {
         if (startDateInput.value && !dueDateInput.value) {
             startDateInput.classList.add('border-yellow-500');
-            startDateValidation.innerHTML = '<span class="text-yellow-600">⚠ Start date set but no due date</span>';
+            startDateValidation.innerHTML = '<span class="text-yellow-600">? Start date set but no due date</span>';
         }
         if (!startDateInput.value && dueDateInput.value) {
             dueDateInput.classList.add('border-yellow-500');
-            dueDateValidation.innerHTML = '<span class="text-yellow-600">⚠ Due date set but no start date</span>';
+            dueDateValidation.innerHTML = '<span class="text-yellow-600">? Due date set but no start date</span>';
         }
     }
 

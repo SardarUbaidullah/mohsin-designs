@@ -441,9 +441,9 @@ public function toggleStatus(User $user)
         }
 
         // Get user activity log (if you have activity logging)
-        $activities = $user->activities()->latest()->take(10)->get();
+        
 
-        return view('admin.users.show', compact('user', 'client', 'activities'));
+        return view('admin.users.show', compact('user', 'client'));
     }
 
     /**
