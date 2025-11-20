@@ -102,7 +102,7 @@ public function toggleStatus(User $user)
             if ($activeSuperAdminCount === 0 && !empty($superAdminIds)) {
                 return redirect()->back()
                     ->with('error', 'Cannot deactivate all super admin accounts. At least one super admin must remain active.');
-            }
+            } 
         }
 
         try {
