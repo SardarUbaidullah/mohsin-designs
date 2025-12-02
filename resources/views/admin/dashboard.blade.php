@@ -26,8 +26,6 @@
             Monitor system health, manage users, and configure platform settings
         </p>
     </div>
-
-
 </div>
 
 <!-- Navigation Tabs -->
@@ -463,6 +461,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -485,19 +484,46 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                    User
+                                    {{ ucfirst($user->role) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                    @if($user->status == 'active') bg-green-100 text-green-800
+                                    @else bg-red-100 text-red-800 @endif">
+                                    {{ ucfirst($user->status ?? 'active') }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                 {{ $user->created_at->format('M d, Y') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="{{ route('users.edit', $user->id) }}" class="text-primary hover:text-[#146c3e] mr-3">Edit</a>
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure?')">Delete</button>
-                                </form>
+                                <div class="flex items-center justify-end space-x-2">
+                                    <a href="{{ route('users.tasks', $user->id) }}" class="text-primary hover:text-[#146c3e] px-2 py-1 rounded hover:bg-primary/10 transition-colors" title="View Tasks">
+                                        <i class="fas fa-tasks text-xs"></i>
+                                    </a>
+                                    <a href="{{ route('users.projects', $user->id) }}" class="text-secondary hover:text-[#146c3e] px-2 py-1 rounded hover:bg-secondary/10 transition-colors" title="View Projects">
+                                        <i class="fas fa-project-diagram text-xs"></i>
+                                    </a>
+                                      <form action="{{ route('users.toggle-status', $user) }}" method="POST"
+                                                class="inline toggle-status-form flex-shrink-0">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit"
+                                                    class="relative inline-flex h-5 w-9 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {{ $user->status === 'active' ? 'bg-green-600' : 'bg-red-600' }}"
+                                                    role="switch"
+                                                    aria-checked="{{ $user->status === 'active' ? 'true' : 'false' }}"
+                                                    {{ $user->id === auth()->id() ? 'disabled' : '' }}
+                                                    title="{{ $user->id === auth()->id() ? 'Cannot change your own status' : ($user->status === 'active' ? 'Deactivate User' : 'Activate User') }}">
+                                                    <span class="sr-only">Toggle user status</span>
+                                                    <span aria-hidden="true"
+                                                        class="pointer-events-none inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {{ $user->status === 'active' ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0' }}"></span>
+                                                </button>
+                                            </form>
+                                    <a href="{{ route('users.edit', $user->id) }}" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-100 transition-colors" title="Edit">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         @endforeach
@@ -527,6 +553,8 @@
                     <thead>
                         <tr class="border-b border-gray-200">
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Tasks</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
@@ -534,11 +562,21 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        @foreach(\App\Models\Projects::withCount('tasks')->latest()->get() as $project)
+                        @foreach(\App\Models\Projects::with(['manager', 'tasks'])->withCount(['tasks as active_tasks_count' => function($query) {
+                            $query->whereIn('status', ['todo', 'in_progress']);
+                        }])->latest()->get() as $project)
                         <tr>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="text-sm font-medium text-black">{{ $project->name }}</div>
-                                <div class="text-sm text-gray-500">{{ $project->tasks_count }} tasks</div>
+                                <div class="text-sm text-gray-500">{{ $project->tasks_count }} total tasks</div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ $project->manager->name ?? 'N/A' }}</div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <a href="{{ route('projects.tasks.active', $project->id) }}" class="text-sm font-medium text-primary hover:text-[#146c3e] hover:underline">
+                                    {{ $project->active_tasks_count }} active
+                                </a>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
@@ -587,13 +625,14 @@
                         <tr class="border-b border-gray-200">
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        @foreach(\App\Models\tasks::with('project')->latest()->get() as $task)
+                        @foreach(\App\Models\Tasks::with(['project', 'assignee'])->latest()->get() as $task)
                         <tr>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="text-sm font-medium text-black">{{ $task->title }}</div>
@@ -601,6 +640,18 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                 {{ $task->project->name ?? 'N/A' }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @if($task->assignee)
+                                <div class="flex items-center">
+                                    <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-xs mr-2">
+                                        {{ strtoupper(substr($task->assignee->name, 0, 1)) }}
+                                    </div>
+                                    <span class="text-sm text-gray-900">{{ $task->assignee->name }}</span>
+                                </div>
+                                @else
+                                <span class="text-xs text-gray-500">Unassigned</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Client;
+use App\Models\Tasks;
+use App\Models\Projects;
 use Illuminate\Http\Request;
 use App\Providers\NotificationService;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +14,27 @@ use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
+
+
+      public function userTasks(User $user)
+    {
+        $tasks = Tasks::where('assigned_to', $user->id)
+                    ->with(['project', 'milestone'])
+                    ->latest()
+                    ->get();
+
+        return view('admin.users.tasks', compact('user', 'tasks'));
+    }
+
+      public function userProjects(User $user)
+    {
+        $projects = Projects::where('manager_id', $user->id)
+                          ->withCount('tasks')
+                          ->latest()
+                          ->get();
+
+        return view('admin.users.projects', compact('user', 'projects'));
+    }
     protected $notificationService;
 
     public function __construct(NotificationService $notificationService)
@@ -428,7 +451,7 @@ public function toggleStatus(User $user)
         }
 
         $user->delete();
-        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
+        return redirect()->back();
     }
 
     public function show(User $user)

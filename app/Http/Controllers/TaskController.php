@@ -299,4 +299,18 @@ public function index(Request $request)
             'task' => $task->load('project', 'assignee', 'milestone')
         ]);
     }
+
+
+
+
+     public function activeTasks(Projects $project)
+    {
+        $tasks = Tasks::where('project_id', $project->id)
+                     ->whereIn('status', ['todo', 'in_progress'])
+                     ->with(['assignee', 'milestone'])
+                     ->latest()
+                     ->get();
+
+        return view('admin.projects.active-tasks', compact('project', 'tasks'));
+    }
 }

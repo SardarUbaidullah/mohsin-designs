@@ -197,6 +197,16 @@ Route::post('/files/{id}/access', [FileController::class, 'updateAccess'])->name
 Route::middleware(['auth', 'super_admin'])->group(function () {
     Route::resource('projects', ProjectController::class);
 
+//main dashboard controls
+ Route::get('/users/{user}/tasks', [UserController::class, 'userTasks'])->name('users.tasks');
+    Route::get('/users/{user}/projects', [UserController::class, 'userProjects'])->name('users.projects');
+    Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    
+    // Project specific routes
+    Route::get('/projects/{project}/active-tasks', [ProjectController::class, 'activeTasks'])->name('projects.tasks.active');
+    
+
+
     // Profile
 // Super Admin Task Routes
 Route::get('/tasks/pending', [TaskController::class, 'pendingTasks'])->name('tasks.pending');

@@ -300,7 +300,7 @@
                         <!-- Avatar -->
                         <div class="text-center mb-6">
                             <div class="w-20 h-20 bg-gradient-to-br from-primary to-green-600 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg">
-                                {{ strtoupper(substr($user->name, 0, 1)) }}
+                               <img src="{{$user->profile_photo_url}}" alt="">
                             </div>
                             <h4 class="mt-3 text-lg font-semibold text-gray-900">{{ $user->name }}</h4>
                             <p class="text-sm text-gray-500">{{ $user->email }}</p>
