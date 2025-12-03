@@ -333,7 +333,6 @@
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
@@ -341,7 +340,7 @@
                                             <tr class="hover:bg-gray-50">
                                                 <td class="px-6 py-4">
                                                     <div class="text-sm font-medium text-gray-900">${project.name || 'Unknown'}</div>
-                                                    <div class="text-sm text-gray-500">${project.description || 'No description'}</div>
+                                                    <div class="text-sm text-gray-500 line-clamp-2">${project.description || 'No description'}</div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm font-medium text-gray-900">${project.duration?.formatted_duration || 'N/A'}</div>
@@ -353,16 +352,7 @@
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     ${(project.updated_at || '').split(' ')[0] || 'N/A'}
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                        ${(project.activity?.activity_status || 'Stale') === 'Recent' ? 'bg-green-100 text-green-800' : 
-                                                          (project.activity?.activity_status || 'Stale') === 'Active' ? 'bg-blue-100 text-blue-800' : 
-                                                          'bg-gray-100 text-gray-800'}">
-                                                        ${project.activity?.activity_status || 'Stale'}
-                                                    </span>
-                                        
-                                                </td>
-                                            </tr>
+                                                                                         </tr>
                                         `).join('')}
                                         </tbody>
                                     </table>
@@ -454,7 +444,7 @@
                                              isDisabled || isNextDisabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 
                                              'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}"
                                            ${isDisabled || isNextDisabled ? 'disabled' : ''}>
-                                            ${link.label.replace('&laquo;', '«').replace('&raquo;', '»')}
+                                            ${link.label.replace('&laquo;', 'Â«').replace('&raquo;', 'Â»')}
                                         </a>
                                     `;
                                     }).join('')}
