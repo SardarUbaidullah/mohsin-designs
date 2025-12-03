@@ -18,129 +18,168 @@ class TimeReportController extends Controller
         return view('admin.reports.time-reports');
     }
 
-    // Get time tracking summary
+    // 1. Get Time Summary Report
     public function getTimeSummary(Request $request)
     {
         try {
-            $dateRange = $request->get('range', '7'); // 7, 30, 90, 365
+            $dateRange = $request->get('range', '30'); // Default to 30 days
 
             $startDate = match($dateRange) {
                 '7' => Carbon::now()->subDays(7),
                 '30' => Carbon::now()->subDays(30),
                 '90' => Carbon::now()->subDays(90),
                 '365' => Carbon::now()->subDays(365),
+                'all' => null, // No date filter for "all"
                 default => Carbon::now()->subDays(30)
             };
 
-            // FIX 1: Prevent negative time by using ABS and ensuring positive duration
-            $totalTime = TimeLog::where('is_running', false)
-                ->whereNotNull('end_time')
-                ->where('start_time', '>=', $startDate)
-                ->sum(DB::raw('ABS(duration_minutes)'));
+            // Build base query
+            $query = TimeLog::where('is_running', false)
+                ->whereNotNull('end_time');
 
-            // Time by user - FIXED: Use ABS to prevent negative time
-            $timeByUser = TimeLog::where('is_running', false)
+            if ($dateRange !== 'all' && $startDate) {
+                $query->where('start_time', '>=', $startDate);
+            }
+
+            // Calculate total minutes (use calculated duration if duration_minutes is 0)
+            $timeLogs = $query->get();
+            $totalMinutes = 0;
+            
+            foreach ($timeLogs as $log) {
+                $totalMinutes += $this->calculateDurationMinutes($log);
+            }
+            
+            $totalHours = round($totalMinutes / 60, 2);
+
+            // Time by user
+            $userQuery = TimeLog::where('is_running', false)
                 ->whereNotNull('end_time')
-                ->with(['user' => function($query) {
-                    $query->select('id', 'name', 'email');
-                }])
-                ->select('user_id', DB::raw('SUM(ABS(duration_minutes)) as total_minutes'))
-                ->where('start_time', '>=', $startDate)
-                ->groupBy('user_id')
-                ->get()
-                ->map(function($item) {
-                    $totalMinutes = abs($item->total_minutes ?? 0); // Ensure positive
+                ->with(['user' => function($q) {
+                    $q->select('id', 'name');
+                }]);
+
+            if ($dateRange !== 'all' && $startDate) {
+                $userQuery->where('start_time', '>=', $startDate);
+            }
+
+            $userLogs = $userQuery->get();
+            
+            $timeByUser = $userLogs->groupBy('user_id')
+                ->map(function($group, $userId) {
+                    $firstLog = $group->first();
+                    $user = $firstLog->user;
+                    
+                    $totalMinutes = 0;
+                    foreach ($group as $log) {
+                        $totalMinutes += $this->calculateDurationMinutes($log);
+                    }
+                    
                     return [
-                        'user' => $item->user,
+                        'user' => $user ? ['name' => $user->name] : ['name' => 'Unknown'],
                         'total_minutes' => $totalMinutes,
                         'total_hours' => round($totalMinutes / 60, 2),
                         'formatted_time' => $this->formatMinutes($totalMinutes)
                     ];
-                });
+                })
+                ->filter(fn($item) => $item['total_minutes'] > 0)
+                ->sortByDesc('total_minutes')
+                ->values();
 
-            // Time by project - FIXED: Use ABS to prevent negative time
-            $timeByProject = TimeLog::where('time_logs.is_running', false)
-                ->whereNotNull('time_logs.end_time')
-                ->join('tasks', 'time_logs.task_id', '=', 'tasks.id')
-                ->join('projects', 'tasks.project_id', '=', 'projects.id')
-                ->select(
-                    'projects.id as project_id',
-                    'projects.name as project_name',
-                    DB::raw('SUM(ABS(time_logs.duration_minutes)) as total_minutes')
-                )
-                ->where('time_logs.start_time', '>=', $startDate)
-                ->groupBy('projects.id', 'projects.name')
-                ->get()
-                ->map(function($item) {
-                    $totalMinutes = abs($item->total_minutes ?? 0); // Ensure positive
+            // Time by project
+            $projectQuery = TimeLog::where('is_running', false)
+                ->whereNotNull('end_time')
+                ->whereHas('task')
+                ->with(['task.project' => function($q) {
+                    $q->select('id', 'name');
+                }]);
+
+            if ($dateRange !== 'all' && $startDate) {
+                $projectQuery->where('start_time', '>=', $startDate);
+            }
+
+            $projectLogs = $projectQuery->get();
+            
+            $timeByProject = $projectLogs->groupBy(function($item) {
+                    return $item->task->project->id ?? null;
+                })
+                ->map(function($group, $projectId) {
+                    if (!$projectId) return null;
+                    
+                    $firstItem = $group->first();
+                    $project = $firstItem->task->project ?? null;
+                    
+                    if (!$project) return null;
+                    
+                    $totalMinutes = 0;
+                    foreach ($group as $log) {
+                        $totalMinutes += $this->calculateDurationMinutes($log);
+                    }
+                    
                     return [
                         'project' => [
-                            'id' => $item->project_id,
-                            'name' => $item->project_name
+                            'id' => $project->id,
+                            'name' => $project->name
                         ],
                         'total_minutes' => $totalMinutes,
                         'total_hours' => round($totalMinutes / 60, 2),
                         'formatted_time' => $this->formatMinutes($totalMinutes)
                     ];
-                });
+                })
+                ->filter(fn($item) => $item && $item['total_minutes'] > 0)
+                ->sortByDesc('total_minutes')
+                ->values();
 
-            // Time by task - FIXED: Use ABS to prevent negative time
-            $timeByTask = TimeLog::where('is_running', false)
+            // Time by task (top 10)
+            $taskQuery = TimeLog::where('is_running', false)
                 ->whereNotNull('end_time')
-                ->with(['task' => function($query) {
-                    $query->select('id', 'title', 'project_id')->with('project:id,name');
-                }])
-                ->select('task_id', DB::raw('SUM(ABS(duration_minutes)) as total_minutes'))
-                ->where('start_time', '>=', $startDate)
-                ->groupBy('task_id')
-                ->orderBy('total_minutes', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($item) {
-                    $totalMinutes = abs($item->total_minutes ?? 0); // Ensure positive
+                ->with(['task' => function($q) {
+                    $q->select('id', 'title', 'project_id')->with('project:id,name');
+                }]);
+
+            if ($dateRange !== 'all' && $startDate) {
+                $taskQuery->where('start_time', '>=', $startDate);
+            }
+
+            $taskLogs = $taskQuery->get();
+            
+            $timeByTask = $taskLogs->groupBy('task_id')
+                ->map(function($group, $taskId) {
+                    $firstLog = $group->first();
+                    $task = $firstLog->task;
+                    
+                    $totalMinutes = 0;
+                    foreach ($group as $log) {
+                        $totalMinutes += $this->calculateDurationMinutes($log);
+                    }
+                    
                     return [
-                        'task' => $item->task,
+                        'task' => $task ? [
+                            'title' => $task->title,
+                            'project' => $task->project
+                        ] : null,
                         'total_minutes' => $totalMinutes,
                         'total_hours' => round($totalMinutes / 60, 2),
                         'formatted_time' => $this->formatMinutes($totalMinutes)
                     ];
-                });
-
-            // Daily time trends (last 14 days) - FIXED: Use ABS
-            $dailyTrends = TimeLog::where('is_running', false)
-                ->whereNotNull('end_time')
-                ->select(
-                    DB::raw('DATE(start_time) as date'),
-                    DB::raw('SUM(ABS(duration_minutes)) as total_minutes')
-                )
-                ->where('start_time', '>=', Carbon::now()->subDays(14))
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get()
-                ->map(function($item) {
-                    return [
-                        'date' => $item->date,
-                        'total_minutes' => $item->total_minutes,
-                        'total_hours' => round($item->total_minutes / 60, 2)
-                    ];
-                });
+                })
+                ->filter(fn($item) => $item['total_minutes'] > 0)
+                ->sortByDesc('total_minutes')
+                ->take(10)
+                ->values();
 
             // Additional stats
-            $totalTasksTracked = TimeLog::where('is_running', false)
-                ->whereNotNull('end_time')
-                ->where('start_time', '>=', $startDate)
-                ->distinct('task_id')
-                ->count('task_id');
-
+            $totalTasksTracked = $query->distinct('task_id')->count('task_id');
             $teamMembers = $timeByUser->count();
-            $avgDailyTime = $totalTime > 0 ? round($totalTime / (int)$dateRange, 2) : 0;
+            $days = $dateRange === 'all' ? 30 : (int)$dateRange; // Use 30 days for "all" calculation
+            $avgDailyTime = $days > 0 ? round($totalMinutes / $days, 2) : 0;
 
             return response()->json([
+                'success' => true,
                 'summary' => [
-                    'total_minutes' => $totalTime,
-                    'total_hours' => round($totalTime / 60, 2),
-                    'formatted_total_time' => $this->formatMinutes($totalTime),
-                    'period' => $dateRange . ' days',
+                    'total_minutes' => $totalMinutes,
+                    'total_hours' => $totalHours,
+                    'formatted_total_time' => $this->formatMinutes($totalMinutes),
+                    'period' => $dateRange === 'all' ? 'All time' : 'Last ' . $dateRange . ' days',
                     'total_tasks_tracked' => $totalTasksTracked,
                     'team_members' => $teamMembers,
                     'avg_daily_minutes' => $avgDailyTime,
@@ -149,34 +188,131 @@ class TimeReportController extends Controller
                 'time_by_user' => $timeByUser,
                 'time_by_project' => $timeByProject,
                 'time_by_task' => $timeByTask,
-                'daily_trends' => $dailyTrends
             ]);
 
         } catch (\Exception $e) {
             \Log::error('Time summary error: ' . $e->getMessage());
             return response()->json([
+                'success' => false,
                 'error' => 'Failed to load time summary',
                 'message' => $e->getMessage()
             ], 500);
         }
     }
 
-    // Detailed time report with filters
+    // 2. Get Project Duration Report - SIMPLIFIED VERSION
+    public function getProjectDurationReport(Request $request)
+    {
+        try {
+            $dateRange = $request->get('range', 'all');
+            
+            $projects = Project::when($dateRange !== 'all' && is_numeric($dateRange), function($query) use ($dateRange) {
+                $startDate = Carbon::now()->subDays($dateRange);
+                return $query->where('created_at', '>=', $startDate);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($project) {
+                $createdAt = Carbon::parse($project->created_at);
+                $updatedAt = Carbon::parse($project->updated_at);
+                
+                // Calculate project duration in a readable format
+                $durationInSeconds = $createdAt->diffInSeconds($updatedAt);
+                
+                // Format duration to be human readable
+                if ($durationInSeconds < 60) {
+                    $formattedDuration = $durationInSeconds . ' seconds';
+                } elseif ($durationInSeconds < 3600) {
+                    $minutes = floor($durationInSeconds / 60);
+                    $seconds = $durationInSeconds % 60;
+                    $formattedDuration = $minutes . ' min ' . $seconds . ' sec';
+                } elseif ($durationInSeconds < 86400) {
+                    $hours = floor($durationInSeconds / 3600);
+                    $minutes = floor(($durationInSeconds % 3600) / 60);
+                    $formattedDuration = $hours . ' hours ' . $minutes . ' min';
+                } else {
+                    $days = floor($durationInSeconds / 86400);
+                    $hours = floor(($durationInSeconds % 86400) / 3600);
+                    $formattedDuration = $days . ' days ' . $hours . ' hours';
+                }
+                
+                // Determine project status based on update time
+                $daysSinceUpdate = $updatedAt->diffInDays(Carbon::now());
+                if ($daysSinceUpdate <= 7) {
+                    $activityStatus = 'Recent';
+                } elseif ($daysSinceUpdate <= 30) {
+                    $activityStatus = 'Active';
+                } else {
+                    $activityStatus = 'Stale';
+                }
+                
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'description' => $project->description,
+                    'status' => $project->status,
+                    'created_at' => $createdAt->format('Y-m-d H:i:s'),
+                    'updated_at' => $updatedAt->format('Y-m-d H:i:s'),
+                    'duration' => [
+                        'total_hours' => $createdAt->diffInHours($updatedAt),
+                        'formatted_duration' => $formattedDuration,
+                        'days_between' => $createdAt->diffInDays($updatedAt)
+                    ],
+                    'activity' => [
+                        'activity_status' => $activityStatus
+                    ]
+                ];
+            });
+
+            // Summary statistics
+            $summary = [
+                'total_projects' => $projects->count(),
+                'avg_duration_hours' => $projects->avg('duration.total_hours') ?? 0
+            ];
+
+            return response()->json([
+                'success' => true,
+                'projects' => $projects,
+                'summary' => $summary,
+                'filters' => [
+                    'date_range' => $dateRange
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Project duration report error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load project duration report',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // 3. Get Detailed Report
     public function getDetailedReport(Request $request)
     {
         try {
+            $dateRange = $request->get('range', '30');
+            
             $query = TimeLog::with([
-                'task' => function($query) {
-                    $query->select('id', 'title', 'project_id')->with('project:id,name');
+                'task' => function($q) {
+                    $q->select('id', 'title', 'project_id')->with('project:id,name');
                 },
-                'user' => function($query) {
-                    $query->select('id', 'name', 'email');
+                'user' => function($q) {
+                    $q->select('id', 'name');
                 }
             ])
             ->where('is_running', false)
             ->whereNotNull('end_time');
 
-            // Apply filters
+            // Apply date range
+            if ($dateRange !== 'all') {
+                $startDate = Carbon::now()->subDays($dateRange);
+                $query->where('start_time', '>=', $startDate);
+            }
+
+            // Apply other filters
             if ($request->has('user_id') && $request->user_id) {
                 $query->where('user_id', $request->user_id);
             }
@@ -187,21 +323,12 @@ class TimeReportController extends Controller
                 });
             }
 
-            if ($request->has('start_date') && $request->start_date) {
-                $query->where('start_time', '>=', $request->start_date);
-            }
+            $timeLogs = $query->orderBy('start_time', 'desc')->paginate(25);
 
-            if ($request->has('end_date') && $request->end_date) {
-                $query->where('start_time', '<=', $request->end_date . ' 23:59:59');
-            }
-
-            // FIX 2: Pagination - ensure proper pagination
-            $timeLogs = $query->orderBy('start_time', 'desc')
-                ->paginate(25);
-
-            // Transform data for response - FIXED: Use ABS to prevent negative time
+            // Transform data
             $timeLogs->getCollection()->transform(function($timeLog) {
-                $durationMinutes = abs($timeLog->duration_minutes); // Ensure positive duration
+                // Calculate duration in minutes
+                $durationMinutes = $this->calculateDurationMinutes($timeLog);
                 $hours = floor($durationMinutes / 60);
                 $minutes = $durationMinutes % 60;
                 $formattedDuration = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
@@ -213,7 +340,7 @@ class TimeReportController extends Controller
                     'user_name' => $timeLog->user->name ?? 'Unknown User',
                     'description' => $timeLog->description,
                     'start_time' => $timeLog->start_time->format('Y-m-d H:i:s'),
-                    'end_time' => $timeLog->end_time->format('Y-m-d H:i:s'),
+                    'end_time' => $timeLog->end_time ? $timeLog->end_time->format('Y-m-d H:i:s') : null,
                     'duration_minutes' => $durationMinutes,
                     'duration_hours' => round($durationMinutes / 60, 2),
                     'formatted_duration' => $formattedDuration,
@@ -226,6 +353,7 @@ class TimeReportController extends Controller
             $projects = Project::select('id', 'name')->get();
 
             return response()->json([
+                'success' => true,
                 'time_logs' => $timeLogs,
                 'filters' => [
                     'users' => $users,
@@ -237,268 +365,51 @@ class TimeReportController extends Controller
         } catch (\Exception $e) {
             \Log::error('Detailed report error: ' . $e->getMessage());
             return response()->json([
+                'success' => false,
                 'error' => 'Failed to load detailed report',
                 'message' => $e->getMessage()
             ], 500);
         }
     }
 
-    // Project-based time report - FIXED: Use ABS
-    public function getProjectTimeReport(Request $request)
+    /**
+     * Calculate duration in minutes from a TimeLog
+     * Uses duration_minutes if > 0, otherwise calculates from start_time and end_time
+     */
+    private function calculateDurationMinutes(TimeLog $timeLog)
     {
-        try {
-            $projectId = $request->get('project_id');
-
-            $query = TimeLog::with([
-                'task' => function($query) {
-                    $query->select('id', 'title', 'project_id');
-                },
-                'user' => function($query) {
-                    $query->select('id', 'name');
-                }
-            ])
-            ->whereHas('task', function($q) use ($projectId) {
-                if ($projectId) {
-                    $q->where('project_id', $projectId);
-                }
-            })
-            ->where('is_running', false)
-            ->whereNotNull('end_time');
-
-            // Date range filter
-            if ($request->has('start_date') && $request->start_date) {
-                $query->where('start_time', '>=', $request->start_date);
-            }
-
-            if ($request->has('end_date') && $request->end_date) {
-                $query->where('start_time', '<=', $request->end_date . ' 23:59:59');
-            }
-
-            $timeLogs = $query->orderBy('start_time', 'desc')->get();
-
-            // Group by task and user for summary - FIXED: Use ABS
-            $taskSummary = $timeLogs->groupBy('task_id')->map(function($logs, $taskId) {
-                $task = $logs->first()->task;
-                $totalMinutes = $logs->sum(function($log) {
-                    return abs($log->duration_minutes);
-                });
-
-                return [
-                    'task' => $task,
-                    'total_minutes' => $totalMinutes,
-                    'total_hours' => round($totalMinutes / 60, 2),
-                    'formatted_time' => $this->formatMinutes($totalMinutes),
-                    'time_entries_count' => $logs->count()
-                ];
-            })->values();
-
-            $userSummary = $timeLogs->groupBy('user_id')->map(function($logs, $userId) {
-                $user = $logs->first()->user;
-                $totalMinutes = $logs->sum(function($log) {
-                    return abs($log->duration_minutes);
-                });
-
-                return [
-                    'user' => $user,
-                    'total_minutes' => $totalMinutes,
-                    'total_hours' => round($totalMinutes / 60, 2),
-                    'formatted_time' => $this->formatMinutes($totalMinutes),
-                    'tasks_worked_on' => $logs->unique('task_id')->count()
-                ];
-            })->values();
-
-            return response()->json([
-                'time_logs' => $timeLogs->take(50)->map(function($log) {
-                    $log->duration_minutes = abs($log->duration_minutes);
-                    return $log;
-                })->values(),
-                'task_summary' => $taskSummary,
-                'user_summary' => $userSummary,
-                'overall_stats' => [
-                    'total_time_minutes' => $timeLogs->sum(function($log) {
-                        return abs($log->duration_minutes);
-                    }),
-                    'total_time_hours' => round($timeLogs->sum(function($log) {
-                        return abs($log->duration_minutes);
-                    }) / 60, 2),
-                    'total_tasks' => $timeLogs->unique('task_id')->count(),
-                    'total_users' => $timeLogs->unique('user_id')->count(),
-                    'total_entries' => $timeLogs->count()
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Project time report error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to load project report'], 500);
+        // If duration_minutes is set and > 0, use it
+        if ($timeLog->duration_minutes > 0) {
+            return $timeLog->duration_minutes;
         }
-    }
-
-    // User performance report - FIXED: Use ABS
-    public function getUserPerformanceReport(Request $request)
-    {
-        try {
-            $dateRange = $request->get('range', '30');
-            $startDate = Carbon::now()->subDays($dateRange);
-
-            $users = User::whereIn('role', ['admin', 'user'])
-                ->with(['timeLogs' => function($query) use ($startDate) {
-                    $query->where('is_running', false)
-                          ->whereNotNull('end_time')
-                          ->where('start_time', '>=', $startDate)
-                          ->with('task.project');
-                }])
-                ->get()
-                ->map(function($user) {
-                    $timeLogs = $user->timeLogs;
-                    $totalMinutes = $timeLogs->sum(function($log) {
-                        return abs($log->duration_minutes);
-                    });
-                    $totalTasks = $timeLogs->unique('task_id')->count();
-                    $totalProjects = $timeLogs->unique(function($log) {
-                        return $log->task->project_id ?? null;
-                    })->count();
-
-                    $avgTimePerTask = $totalTasks > 0 ? round($totalMinutes / $totalTasks, 2) : 0;
-
-                    return [
-                        'user' => $user->only(['id', 'name', 'email']),
-                        'total_minutes' => $totalMinutes,
-                        'total_hours' => round($totalMinutes / 60, 2),
-                        'formatted_total_time' => $this->formatMinutes($totalMinutes),
-                        'tasks_worked_on' => $totalTasks,
-                        'projects_worked_on' => $totalProjects,
-                        'avg_minutes_per_task' => $avgTimePerTask,
-                        'time_entries_count' => $timeLogs->count(),
-                        'recent_activity' => $timeLogs->sortByDesc('start_time')->take(5)->values()
-                    ];
-                })
-                ->sortByDesc('total_minutes')
-                ->values();
-
-            return response()->json([
-                'users' => $users,
-                'period' => $dateRange . ' days',
-                'summary' => [
-                    'total_users' => $users->count(),
-                    'total_time_minutes' => $users->sum('total_minutes'),
-                    'total_time_hours' => round($users->sum('total_minutes') / 60, 2),
-                    'avg_time_per_user' => $users->count() > 0 ? round($users->sum('total_minutes') / $users->count(), 2) : 0
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('User performance report error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to load user performance report'], 500);
+        
+        // Otherwise calculate from start_time and end_time
+        if ($timeLog->start_time && $timeLog->end_time) {
+            $start = Carbon::parse($timeLog->start_time);
+            $end = Carbon::parse($timeLog->end_time);
+            
+            // Calculate difference in minutes
+            $durationMinutes = $start->diffInMinutes($end);
+            
+            // Ensure minimum 1 minute if there's any duration
+            if ($durationMinutes > 0) {
+                return $durationMinutes;
+            }
+            
+            // If less than 1 minute but there's a difference, return 1 minute
+            $durationSeconds = $start->diffInSeconds($end);
+            if ($durationSeconds > 0) {
+                return 1; // Minimum 1 minute
+            }
         }
+        
+        return 0;
     }
 
-    // FIX 3: Export time report - Working export functionality
-    public function exportReport(Request $request)
-    {
-        try {
-            $type = $request->get('type', 'detailed');
-            $format = $request->get('format', 'json');
-
-            // Get the data based on type
-            switch ($type) {
-                case 'summary':
-                    $data = $this->getTimeSummary($request)->getData(true);
-                    break;
-                case 'detailed':
-                    $data = $this->getDetailedReport($request)->getData(true);
-                    break;
-                case 'project':
-                    $data = $this->getProjectTimeReport($request)->getData(true);
-                    break;
-                case 'user_performance':
-                    $data = $this->getUserPerformanceReport($request)->getData(true);
-                    break;
-                default:
-                    $data = $this->getTimeSummary($request)->getData(true);
-            }
-
-            // Prepare export data
-            $exportData = [
-                'type' => $type,
-                'exported_at' => now()->format('Y-m-d H:i:s'),
-                'data' => $data
-            ];
-
-            // Return different formats
-            if ($format === 'csv') {
-                return $this->exportToCsv($exportData, $type);
-            } elseif ($format === 'json') {
-                return response()->json([
-                    'success' => true,
-                    'data' => $exportData,
-                    'type' => $type,
-                    'exported_at' => now()->format('Y-m-d H:i:s')
-                ]);
-            } else {
-                return response()->json([
-                    'success' => true,
-                    'data' => $exportData,
-                    'type' => $type,
-                    'exported_at' => now()->format('Y-m-d H:i:s')
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            \Log::error('Export report error: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'Failed to export report',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    // Helper method for CSV export
-    private function exportToCsv($data, $type)
-    {
-        $filename = "time_report_{$type}_" . date('Y-m-d') . ".csv";
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
-
-        $callback = function() use ($data, $type) {
-            $file = fopen('php://output', 'w');
-
-            // Add headers based on report type
-            if ($type === 'detailed' && isset($data['data']['time_logs']['data'])) {
-                fputcsv($file, ['Task', 'User', 'Project', 'Duration', 'Start Time', 'End Time', 'Date']);
-
-                foreach ($data['data']['time_logs']['data'] as $log) {
-                    fputcsv($file, [
-                        $log['task_name'],
-                        $log['user_name'],
-                        $log['project_name'],
-                        $log['formatted_duration'],
-                        $log['start_time'],
-                        $log['end_time'],
-                        $log['date']
-                    ]);
-                }
-            } elseif ($type === 'summary') {
-                fputcsv($file, ['Metric', 'Value']);
-                fputcsv($file, ['Total Time', $data['data']['summary']['formatted_total_time']]);
-                fputcsv($file, ['Tasks Tracked', $data['data']['summary']['total_tasks_tracked']]);
-                fputcsv($file, ['Team Members', $data['data']['summary']['team_members']]);
-                fputcsv($file, ['Average Daily', $data['data']['summary']['avg_daily_formatted']]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
+    // Helper method to format minutes
     private function formatMinutes($minutes)
     {
-        // Ensure minutes is positive
-        $minutes = abs($minutes);
-
+        $minutes = max(0, $minutes);
         $hours = floor($minutes / 60);
         $mins = $minutes % 60;
 

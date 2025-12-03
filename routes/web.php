@@ -379,15 +379,14 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Professional Time Analytics
     // ... other routes ...
 
+  // In web.php or your route file
     Route::prefix('time-reports')->group(function () {
         Route::get('/', [TimeReportController::class, 'index'])->name('admin.time-reports');
-        Route::get('/summary', [TimeReportController::class, 'getTimeSummary']);
-        Route::get('/detailed', [TimeReportController::class, 'getDetailedReport']);
-        Route::get('/team-activity', [TimeReportController::class, 'getTeamActivity']);
-        Route::get('/weekly-summary', [TimeReportController::class, 'getWeeklySummary']);
-        Route::get('/user-performance', [TimeReportController::class, 'getUserPerformanceReport']);
-        Route::post('/export', [TimeReportController::class, 'exportReport']);
+        Route::get('/summary', [TimeReportController::class, 'getTimeSummary'])->name('admin.time-reports.summary');
+        Route::get('/project-duration', [TimeReportController::class, 'getProjectDurationReport'])->name('admin.time-reports.project-duration');
+        Route::get('/detailed', [TimeReportController::class, 'getDetailedReport'])->name('admin.time-reports.detailed');
     });
+
 
 
    Route::post('/time-tracking/start-timer', [TimeTrackingController::class, 'startTimer']);
