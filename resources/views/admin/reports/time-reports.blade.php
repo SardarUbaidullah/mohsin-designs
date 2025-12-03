@@ -17,10 +17,10 @@
                     <div class="flex items-center space-x-4">
                         <!-- Report Type Selector -->
                         <select id="reportType"
-                            class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="time_summary">Time Summary</option>
+                            class="bg-white hidden border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            {{-- <option value="time_summary">Time Summary</option> --}}
                             <option value="project_duration">Project Duration</option>
-                            <option value="detailed">Detailed Report</option>
+                            {{-- <option value="detailed">Detailed Report</option> --}}
                         </select>
 
                         <!-- Date Range Filter -->
@@ -58,7 +58,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let currentDateRange = '30';
-            let currentReportType = 'time_summary';
+            let currentReportType = 'project_duration';
 
             // Get CSRF token safely
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -96,17 +96,17 @@
                     let url;
 
                     switch (currentReportType) {
-                        case 'time_summary':
-                            url = baseUrl + '/summary?range=' + currentDateRange;
-                            break;
+                        // case 'time_summary':
+                        //     url = baseUrl + '/summary?range=' + currentDateRange;
+                        //     break;
                         case 'project_duration':
                             url = baseUrl + '/project-duration?range=' + currentDateRange;
                             break;
-                        case 'detailed':
-                            url = baseUrl + '/detailed?range=' + currentDateRange + '&page=' + page;
-                            break;
+                        // case 'detailed':
+                        //     url = baseUrl + '/detailed?range=' + currentDateRange + '&page=' + page;
+                        //     break;
                         default:
-                            url = baseUrl + '/summary?range=' + currentDateRange;
+                            url = baseUrl + '/project-duration?range=' + currentDateRange;
                     }
 
                     console.log('Loading URL:', url); // Debug log
@@ -133,13 +133,13 @@
 
                     // Render based on report type
                     switch (currentReportType) {
-                        case 'time_summary':
-                            renderTimeSummary(data);
-                            break;
+                        // case 'time_summary':
+                        //     renderTimeSummary(data);
+                        //     break;
                         case 'project_duration':
                             renderProjectDuration(data);
                             break;
-                        case 'detailed':
+                        case 'project_duration':
                             renderDetailedReport(data);
                             break;
                     }
@@ -305,7 +305,7 @@
                 document.getElementById('reportContent').innerHTML = `
             <div class="fade-in">
                 <!-- Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
                         <div class="text-2xl font-bold text-blue-600">${summary.total_projects || 0}</div>
                         <div class="text-sm text-gray-600 mt-1">Total Projects</div>
@@ -315,11 +315,7 @@
                         <div class="text-sm text-gray-600 mt-1">Avg. Duration</div>
                         <div class="text-xs text-gray-400">Project lifespan</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
-                        <div class="text-2xl font-bold text-purple-600">${(summary.avg_duration_hours || 0).toFixed(1)}h</div>
-                        <div class="text-sm text-gray-600 mt-1">Avg. Hours</div>
-                        <div class="text-xs text-gray-400">Per project</div>
-                    </div>
+                   
                 </div>
 
                 <!-- Project Duration Table -->
